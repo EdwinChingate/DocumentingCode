@@ -7,9 +7,12 @@ def VariablesLists(FunctionsFolder,FunctionsListDF):
         FileLoc=FunctionsFolder+'/'+File
         FunctionName=File.replace('.py','')
         FunctionID=int(FunctionsListDF['ID'][FunctionName])
-        Text=ReadSummary(FileLoc)
-        for line in Text:
-            Var=CleanVariables(line)
-            if Var!=0:
-                FunctionsVariables.append([FunctionName,Var])
+        try:
+            Text=ReadSummary(FileLoc)
+            for line in Text:
+                Var=CleanVariables(line)
+                if Var!=0:
+                    FunctionsVariables.append([FunctionName,Var])
+        except:
+            print(File)
     return FunctionsVariables
