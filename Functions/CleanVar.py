@@ -8,4 +8,6 @@ def CleanVar(variable,cut='='):
     CleanVariable=CleanVariable.replace(" ",'')
     CleanVariable=CleanVariable.replace("[",'')
     CleanVariable=CleanVariable.replace("]",'')
+    CleanVariable=CleanVariable.replace("*",'')    
+    CleanVariable=CleanVariable.replace("~",'')        
     return CleanVariable

@@ -1,6 +1,7 @@
 import os
 from ReadSummary import *
 from CleanSentence import *
+from CleanOutput import *
 def ReturnReturner(FunctionsFolder,FunctionsListDF):
     FunctionOutputs=[]
     for File in os.listdir(FunctionsFolder):
@@ -13,7 +14,8 @@ def ReturnReturner(FunctionsFolder,FunctionsListDF):
                 output=CleanSentence(line,startKey="return ",endKey='\n')
                 if output!=0:
                     try:
-                        FunctionOutputs.append([FunctionName,[output]])
+                        output=CleanOutput(output)
+                        FunctionOutputs.append([FunctionName,output])
                     except:
                         print(output)
         except:
