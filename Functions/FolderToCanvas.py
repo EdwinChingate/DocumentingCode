@@ -2,28 +2,38 @@ import numpy as np
 import pandas as pd
 from FunctionsIDs import *
 from FillFunctionsMat import *
-from MatToCanvas import *
+from FunctionsInputs import *
+from FunctionsOutputs import *
+from GenerateAllDocs import *
+from TreeToCanvas import *
 from SaveCanvas import *
 
-def FolderToCanvas(FunctionsFolder, OutputPath, node_width=400, node_height=200, h_gap=100, v_gap=400):
-    # Step 1: Index all functions
+def FolderToCanvas(FunctionsFolder, SaveFolder, OutputCanvasPath, VaultDocPath, prefix="ms2Topo_"):
     FunctionsListDF = FunctionsIDs(FunctionsFolder)
     NFunctions = len(FunctionsListDF)
 
-    # Step 2: Build adjacency matrix
     FunctionsMat = np.zeros((NFunctions, NFunctions))
     FunctionsMat = FillFunctionsMat(FunctionsFolder, FunctionsMat, FunctionsListDF)
+    FunctionsMatDF = pd.DataFrame(FunctionsMat, index=FunctionsListDF.index, columns=FunctionsListDF.index)
 
-    # Step 3: Convert to labeled DataFrame
-    FunctionsMatDF = pd.DataFrame(
-        FunctionsMat,
-        index=FunctionsListDF.index,
-        columns=FunctionsListDF.index
+    FunctionsInputsDF = FunctionsInputs(FunctionsFolder, FunctionsListDF)
+    FunctionsOutputsDF = FunctionsOutputs(FunctionsFolder, FunctionsListDF)
+
+    print("Generating Markdown documentation...")
+    DocPaths = GenerateAllDocs(
+        FunctionsMatDF=FunctionsMatDF, 
+        FunctionsInputsDF=FunctionsInputsDF, 
+        FunctionsOutputsDF=FunctionsOutputsDF, 
+        FunctionsFolder=FunctionsFolder, 
+        SaveFolder=SaveFolder,
+        prefix=prefix
     )
 
-    # Step 4: Generate canvas
-    Canvas = MatToCanvas(FunctionsMatDF, node_width, node_height, h_gap, v_gap)
+    print("Generating Canvas map...")
+    # Pass VaultDocPath here!
+    Canvas = TreeToCanvas(FunctionsMatDF, DocPaths, VaultDocPath, node_width=800, node_height=600, h_gap=200, v_gap=400)
 
-    # Step 5: Save
-    SaveCanvas(Canvas, OutputPath)
+    SaveCanvas(Canvas, OutputCanvasPath)
+    print(f"Done! Canvas saved to {OutputCanvasPath}")
+    
     return Canvas
