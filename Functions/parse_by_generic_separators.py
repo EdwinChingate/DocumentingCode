@@ -1,30 +1,26 @@
-# BundleTools.py
 from __future__ import annotations
-
-from infer_filename_from_chunk import *
-from strip_trailing_separators_text import *
-
-import ast
-import json
 import re
-from pathlib import Path
-from typing import Dict, List, Set, Tuple, Optional
+from typing import Dict, List, Tuple
 
+from infer_filename_from_chunk import infer_filename_from_chunk
+from strip_trailing_separators_text import strip_trailing_separators_text
 
-# ============================================================
-# 1) Canvas -> list of function names  (optional utilities)
-# ============================================================
-GENERIC_CHUNK_SEP = re.compile(r'^\s*#\s*---\s*$', re.MULTILINE)
 
 def parse_by_generic_separators(text: str) -> Tuple[Dict[str, str], List[str]]:
-    seps = list(GENERIC_CHUNK_SEP.finditer(text))
+    """
+    Split text on '# ---' separators.
+    Pattern is local — no global variables.
+    """
+    generic_chunk_sep = re.compile(r'^\s*#\s*---\s*$', re.MULTILINE)
+
+    seps = list(generic_chunk_sep.finditer(text))
     if not seps:
         return {}, ["No generic '# ---' separators found."]
 
-    segments = []
+    segments: List[str] = []
     prev_end = 0
     for m in seps:
-        segments.append(text[prev_end:m.start()])
+        segments.append(text[prev_end : m.start()])
         prev_end = m.end()
     segments.append(text[prev_end:])
 
@@ -33,8 +29,7 @@ def parse_by_generic_separators(text: str) -> Tuple[Dict[str, str], List[str]]:
     chunk_idx = 0
 
     for seg in segments:
-        seg_clean = seg.strip()
-        if not seg_clean:
+        if not seg.strip():
             continue
 
         chunk_idx += 1

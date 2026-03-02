@@ -1,9 +1,11 @@
+from __future__ import annotations
 import re
+
 
 def strip_trailing_separators_text(s: str) -> str:
     """
     Remove trailing separator blocks like long hash lines + surrounding blanks.
-    Self-contained: does not rely on any global constants imported from other files.
+    No global variables: pattern is compiled locally.
     """
     separator_hashline = re.compile(r'^\s*#\s*#{20,}\s*$')
 

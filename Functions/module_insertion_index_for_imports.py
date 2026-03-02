@@ -1,19 +1,15 @@
-# BundleTools.py
 from __future__ import annotations
-
 import ast
-import json
-import re
-from pathlib import Path
-from typing import Dict, List, Set, Tuple, Optional
 
-
-# ============================================================
-# 1) Canvas -> list of function names  (optional utilities)
-# ============================================================
 
 def module_insertion_index_for_imports(code: str) -> int:
+    """
+    Return the line index (0-based, for list slicing) after which new
+    imports should be inserted — skipping module docstring and __future__.
+    No global variables.
+    """
     lines = code.splitlines(keepends=True)
+
     try:
         mod = ast.parse(code)
     except SyntaxError:
@@ -33,7 +29,10 @@ def module_insertion_index_for_imports(code: str) -> int:
 
     for node in mod.body:
         if isinstance(node, ast.ImportFrom) and node.module == "__future__":
-            future_end = max(future_end, getattr(node, "end_lineno", node.lineno) or 0)
+            future_end = max(
+                future_end,
+                getattr(node, "end_lineno", node.lineno) or 0
+            )
 
     insert_after_1based = max(doc_end, future_end)
     return min(max(insert_after_1based, 0), len(lines))

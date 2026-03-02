@@ -1,10 +1,18 @@
-def called_function_names(code: str) -> set[str]:
-    import ast
+from __future__ import annotations
+import ast
+from typing import Set
 
-    class CallNameCollector(ast.NodeVisitor):
-        def __init__(self):
-            self.called = set()
-        def visit_Call(self, node):
+
+def called_function_names(code: str) -> Set[str]:
+    """
+    Return the set of all function/callable names that appear in Call nodes.
+    No global variables.
+    """
+    class _CallNameCollector(ast.NodeVisitor):
+        def __init__(self) -> None:
+            self.called: Set[str] = set()
+
+        def visit_Call(self, node: ast.Call) -> None:
             if isinstance(node.func, ast.Name):
                 self.called.add(node.func.id)
             self.generic_visit(node)
@@ -14,6 +22,6 @@ def called_function_names(code: str) -> set[str]:
     except SyntaxError:
         return set()
 
-    v = CallNameCollector()
-    v.visit(mod)
-    return v.called
+    collector = _CallNameCollector()
+    collector.visit(mod)
+    return collector.called

@@ -1,25 +1,25 @@
-# BundleTools.py
 from __future__ import annotations
+from typing import List
 
-from existing_import_modules import *
-from module_insertion_index_for_imports import *
-from uncomment_or_prepare_imports import *
-
-import ast
-import json
-import re
-from pathlib import Path
-from typing import Dict, List, Set, Tuple, Optional
+from existing_import_modules import existing_import_modules
+from module_insertion_index_for_imports import module_insertion_index_for_imports
+from uncomment_or_prepare_imports import uncomment_or_prepare_imports
 
 
-# ============================================================
-# 1) Canvas -> list of function names  (optional utilities)
-# ============================================================
-
-def insert_internal_imports(code: str, needed_modules: List[str], import_style: str = "star") -> str:
+def insert_internal_imports(
+    code: str,
+    needed_modules: List[str],
+    import_style: str = "star",
+) -> str:
+    """
+    Insert missing 'from mod import *' (or 'from mod import mod') lines
+    at the correct position in code.
+    No global variables.
+    """
     if not needed_modules:
         return code
 
+    # uncomment any already-commented imports first
     code, needed_modules = uncomment_or_prepare_imports(code, needed_modules)
     if not needed_modules:
         return code
@@ -45,7 +45,7 @@ def insert_internal_imports(code: str, needed_modules: List[str], import_style: 
     if insert_idx > 0 and lines[insert_idx - 1].strip() != "":
         block.append("\n")
     block.extend(import_lines)
-    if insert_idx < len(lines) and (insert_idx == 0 or lines[insert_idx].strip() != ""):
+    if insert_idx < len(lines) and lines[insert_idx].strip() != "":
         block.append("\n")
 
     new_lines = lines[:insert_idx] + block + lines[insert_idx:]
