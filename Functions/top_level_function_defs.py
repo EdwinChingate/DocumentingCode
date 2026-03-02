@@ -1,12 +1,14 @@
 from __future__ import annotations
-import ast
-from typing import Set
+
+# TODO: could not auto-resolve the following names —
+#   from ??? import node
+
 
 
 def top_level_function_defs(code: str) -> Set[str]:
     """
-    Return the set of top-level function names defined in code.
-    No global variables.
+    Return the set of top-level function and class names defined in code.
+    No global variables, no classes.
     """
     try:
         mod = ast.parse(code)
@@ -16,5 +18,5 @@ def top_level_function_defs(code: str) -> Set[str]:
     return {
         node.name
         for node in mod.body
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
     }

@@ -1,79 +1,82 @@
 from __future__ import annotations
 from pathlib import Path
-from typing import Dict
-
-from parse_bundle import parse_bundle
-from RepairSplitFileHeaders import RepairSplitFileHeaders
-
+from get_external_names import *
+from get_top_level_defs import *
+from parse_bundle import *
+from scan_custom_folder import *
+from strip_existing_imports import *
 
 def SplitAndRepairBundle(
-    bundle_txt_path: str | Path,
-    output_folder:   str | Path,
-    overwrite:       bool = False,
-    keep_empty:      bool = False,
-    repair_headers:  bool = True,
-    import_style:    str  = "star",
-    verbose:         bool = True,
-) -> Dict:
-    """
-    Full pipeline:
-      read bundle → parse into files → repair imports → write to disk.
-    No global variables.
-    """
-    bundle_txt_path = Path(bundle_txt_path)
-    output_folder   = Path(output_folder)
-    output_folder.mkdir(parents=True, exist_ok=True)
+    bundle_path: str | Path,
+    output_dir: str | Path,
+    custom_functions_dir: str | Path | None = None,
+    overwrite: bool = True
+) -> Dict[str, Any]:
+    """Orchestrates parsing, import resolution, and file generation."""
+    bundle_path = Path(bundle_path)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-    text = bundle_txt_path.read_text(encoding="utf-8", errors="replace")
-    files_dict, notes, mode = parse_bundle(text)
+    text = bundle_path.read_text(encoding="utf-8", errors="replace")
+    files_dict = parse_bundle(text)
 
-    # Identify problematic entries
-    bad   = {k for k, v in files_dict.items() if v is None}
-    empty = {k for k, v in files_dict.items()
-             if isinstance(v, str) and not v.strip()}
+    # Dictionary to hold definition names to module names
+    master_def_map: Dict[str, str] = {}
+    
+    # 1. Map definitions from inside the bundle
+    for fname, code in files_dict.items():
+        module_name = Path(fname).stem
+        for def_name in get_top_level_defs(code):
+            master_def_map[def_name] = module_name
+            
+    # 2. Map definitions from external library folder
+    if custom_functions_dir:
+        custom_map = scan_custom_folder(Path(custom_functions_dir))
+        master_def_map.update(custom_map)
 
-    if verbose and (bad or empty):
-        print(f"[SplitAndRepairBundle] mode={mode}  None={len(bad)}  empty={len(empty)}")
-        if bad:   print("  None  keys:", list(bad)[:20])
-        if empty: print("  Empty keys:", list(empty)[:20])
+    # 3. Process individual files
+    third_party = {"np": "import numpy as np", "pd": "import pandas as pd"}
+    stdlib = {"re", "os", "sys", "json", "math", "time", "pathlib", "typing", "ast"}
 
-    if not keep_empty:
-        for k in bad | empty:
-            files_dict.pop(k, None)
+    results: Dict[str, Any] = {"written": [], "skipped": []}
 
-    debug = {"imports_added": {}}
-    if repair_headers and files_dict:
-        files_dict, debug = RepairSplitFileHeaders(files_dict, import_style=import_style)
-
-    written     : list = []
-    skipped     : list = []
-    type_errors : list = []
-
-    for fname, content in files_dict.items():
-        out_path = output_folder / fname
-
+    for fname, code in files_dict.items():
+        out_path = output_dir / fname
         if out_path.exists() and not overwrite:
-            skipped.append(str(out_path))
+            results["skipped"].append(str(out_path))
             continue
 
-        if not isinstance(content, str):
-            type_errors.append((fname, type(content).__name__))
-            if verbose:
-                print(f"[SplitAndRepairBundle] SKIP non-str: {fname} → {type(content).__name__}")
-            continue
+        externals = get_external_names(code)
+        
+        import_lines = []
+        unknowns = []
+        seen = set()
 
-        out_path.write_text(content, encoding="utf-8")
-        written.append(str(out_path))
-        if verbose:
-            print(f"  wrote → {out_path}")
+        for name in sorted(externals):
+            line = None
+            if name in third_party:
+                line = third_party[name]
+            elif name in stdlib:
+                line = f"import {name}"
+            elif name in master_def_map:
+                line = f"from {master_def_map[name]} import *"
+            else:
+                unknowns.append(name)
 
-    return {
-        "mode"                      : mode,
-        "written"                   : written,
-        "skipped"                   : skipped,
-        "n_written"                 : len(written),
-        "n_detected_after_cleaning" : len(files_dict),
-        "type_errors"               : type_errors,
-        "notes"                     : notes,
-        "imports_added"             : debug.get("imports_added", {}),
-    }
+            if line and line not in seen:
+                import_lines.append(line)
+                seen.add(line)
+
+        # Build file text
+        new_header = "\n".join(import_lines) + ("\n\n" if import_lines else "")
+        if unknowns:
+            new_header += f"# TODO: unresolved names: {', '.join(unknowns)}\n\n"
+            
+        clean_body = strip_existing_imports(code)
+        final_code = f"from __future__ import annotations\n{new_header}{clean_body}"
+
+        out_path.write_text(final_code, encoding="utf-8")
+        results["written"].append(str(out_path))
+        print(f"✅ Wrote {out_path.name} ({len(import_lines)} imports fixed)")
+
+    return results
