@@ -82,8 +82,3 @@ def SplitAndRepairBundle(
         "notes": notes,
         "imports_added": debug.get("imports_added", {}),
     }
-    
-#from _extract_function_names_from_canvas import *
-import json
-from pathlib import Path
-from typing import List, Dict, Tuple, Optional
